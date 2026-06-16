@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>ESD Portfolio</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="canvas-container"></div>
+
+    <div id="ui-overlay">
+      <div id="title-bar">
+        <h1>NOT LOST ANYMORE</h1>
+        <div class="sub">WMM Lawanma · Atlantis Journey</div>
+      </div>
+      <div id="info-bottom">✦ tap any district crystal</div>
+    </div>
+
+    <!-- Copyright Notice - Add this after #info-bottom -->
+    <div
+      id="copyright"
+      style="
+        position: absolute;
+        bottom: 24px;
+        right: 24px;
+        background: rgba(2, 17, 30, 0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        padding: 6px 16px;
+        border-radius: 30px;
+        border: 1px solid #3ad8ff33;
+        font-size: 0.7rem;
+        color: rgba(180, 220, 255, 0.6);
+        letter-spacing: 0.5px;
+        pointer-events: none;
+        z-index: 25;
+        transition: all 0.3s ease;
+      "
+    >
+      © 2026 WMM Lawanma. All rights reserved.
+    </div>
+
+    <!-- Lesson Panel -->
+    <div id="lesson-panel">
+      <button class="close-btn" id="close-panel">✕</button>
+      <div class="panel-header">
+        <h2 id="panel-title"></h2>
+        <div class="meta" id="panel-meta"></div>
+      </div>
+      <div class="content" id="panel-content"></div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.126.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.126.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <script type="module">
+      // ---- THREE.JS SETUP ----
+      import * as THREE from "three";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+      import {
+        CSS2DRenderer,
+        CSS2DObject,
+      } from "three/addons/renderers/CSS2DRenderer.js";
+
+      const container = document.getElementById("canvas-container");
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x02111e, 0.0035);
+
+      // Responsive camera
+      let camera;
+      function initCamera() {
+        const aspect = window.innerWidth / window.innerHeight;
+        const fov = window.innerWidth < 768 ? 50 : 40;
+        camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 200);
+        const dist =
+          window.innerWidth < 480 ? 38 : window.innerWidth < 768 ? 32 : 28;
+        camera.position.set(22, 14, dist);
+        camera.lookAt(0, 0, 0);
+      }
+      initCamera();
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      container.appendChild(renderer.domElement);
+
+      const labelRenderer = new CSS2DRenderer();
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.domElement.style.position = "absolute";
+      labelRenderer.domElement.style.top = "0";
+      labelRenderer.domElement.style.left = "0";
+      labelRenderer.domElement.style.pointerEvents = "none";
+      container.appendChild(labelRenderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.25;
+      controls.maxPolarAngle = Math.PI / 2.2;
+      controls.minDistance = 8;
+      controls.maxDistance = 55;
+      controls.target.set(0, 0, 0);
+      controls.touchRotate = true;
+      controls.touchZoom = true;
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0x1a4a6a, 0.7);
+      scene.add(ambient);
+      const sun = new THREE.DirectionalLight(0xaae0ff, 1.0);
+      sun.position.set(20, 30, 10);
+      sun.castShadow = true;
+      scene.add(sun);
+      const fill = new THREE.DirectionalLight(0x4a8caa, 0.5);
+      fill.position.set(-20, 10, -20);
+      scene.add(fill);
+
+      // Particles
+      const pGeo = new THREE.BufferGeometry();
+      const pCount = 3500;
+      const pPos = new Float32Array(pCount * 3);
+      for (let i = 0; i < pCount * 3; i += 3) {
+        pPos[i] = (Math.random() - 0.5) * 140;
+        pPos[i + 1] = (Math.random() - 0.5) * 50 + 2;
+        pPos[i + 2] = (Math.random() - 0.5) * 100;
+      }
+      pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
+      const pMat = new THREE.PointsMaterial({
+        color: 0x8ad4ff,
+        size: 0.15,
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+      });
+      scene.add(new THREE.Points(pGeo, pMat));
+
+      // Bubbles
+      const bubbleGroup = new THREE.Group();
+      const bGeo = new THREE.SphereGeometry(0.2, 6, 6);
+      const bMat = new THREE.MeshPhysicalMaterial({
+        color: 0xc0f0ff,
+        transparent: true,
+        opacity: 0.15,
+        roughness: 0.1,
+      });
+      const bubbleCount = window.innerWidth < 480 ? 80 : 150;
+      for (let i = 0; i < bubbleCount; i++) {
+        const b = new THREE.Mesh(bGeo, bMat);
+        b.position.set(
+          (Math.random() - 0.5) * 80,
+          (Math.random() - 0.5) * 35,
+          (Math.random() - 0.5) * 60,
+        );
+        b.scale.setScalar(0.4 + Math.random() * 1.8);
+        b.userData = { speed: 0.004 + Math.random() * 0.02 };
+        bubbleGroup.add(b);
+      }
+      scene.add(bubbleGroup);
+
+      // Jellyfish
+      function createJellyfish(x, y, z) {
+        const g = new THREE.Group();
+        const dome = new THREE.Mesh(
+          new THREE.SphereGeometry(0.7, 8, 8),
+          new THREE.MeshPhysicalMaterial({
+            color: 0x88ddff,
+            transparent: true,
+            opacity: 0.3,
+            emissive: 0x226688,
+            emissiveIntensity: 0.2,
+          }),
+        );
+        dome.scale.set(1, 0.5, 1);
+        g.add(dome);
+        for (let i = 0; i < 10; i++) {
+          const tent = new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              0.02,
+              0.05,
+              1.0 + Math.random() * 0.8,
+              3,
+            ),
+            new THREE.MeshPhysicalMaterial({
+              color: 0x88ddff,
+              transparent: true,
+              opacity: 0.2,
+            }),
+          );
+          tent.position.set(
+            Math.sin((i / 10) * Math.PI * 2) * 0.6,
+            -0.5,
+            Math.cos((i / 10) * Math.PI * 2) * 0.6,
+          );
+          tent.rotation.z = Math.sin((i / 10) * Math.PI * 2) * 0.3;
+          tent.rotation.x = Math.cos((i / 10) * Math.PI * 2) * 0.3;
+          g.add(tent);
+        }
+        g.position.set(x, y, z);
+        return g;
+      }
+      const jellyCount = window.innerWidth < 480 ? 5 : 10;
+      for (let i = 0; i < jellyCount; i++) {
+        scene.add(
+          createJellyfish(
+            (Math.random() - 0.5) * 50,
+            (Math.random() - 0.5) * 14 + 2,
+            (Math.random() - 0.5) * 40,
+          ),
+        );
+      }
+
+      // ---- LESSON DATA (full content, structured) ----
+      const lessonData = [
+        {
+          title: "🏛️ Introduction",
+          meta: "Dr. Gayana Fernando · 22.01.2026",
+          content: `
+          <div class="section">Before ESD</div>
+          I was moving, studying, typing, submitting. But moving where? I knew how to write codes. I knew how to pass exams. But if someone had stopped me on the street and asked, <span class="highlight">"Hey girl, what kind of IT professional do you actually want to be?"</span> I would have frozen. Not because I am stupid. But because no one had ever asked me to imagine that answer. No one had ever helped me see my own position clearly.
+
+          <div class="section">Dr. Gayana did that</div>
+          She helped me understand my career position and perspective at that time. She taught me how to make my career path successful.
+
+          <div class="section">What she actually taught me</div>
+          <ul>
+            <li>How to make my career path successful</li>
+            <li>Differences between different organisations</li>
+            <li>Most used job roles available in the industry</li>
+            <li>Required skills for a particular job role</li>
+          </ul>
+
+          <div class="section">She helped me build</div>
+          <div class="key-point">✨ My confidence</div>
+          <div class="key-point">✨ My leadership</div>
+          <div class="key-point">✨ My communication skills</div>
+          <div class="key-point">✨ My goal setting</div>
+
+          <div class="diagram-box">
+            <strong>AI agents replacement</strong><br>
+            "Why are we hiring you that there are AI agents? So, what are the benefits of hiring you?"
+          </div>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> This session planted the first seed of clarity. I stopped being a passenger in my own career.
+          </div>
+        `,
+        },
+        {
+          title: "📢 Digital Marketing",
+          meta: "Mrs. Premeshini Mendis · 29.01.2026",
+          content: `
+          <div class="section">What is Digital Marketing?</div>
+          I used to think marketing was just ads on TV. I was wrong. Mrs. Premeshini taught me that marketing is promoting products or services to customers. Traditional marketing is TV, radio, newspaper, billboards. But digital marketing is different. It's using the internet and digital platforms. And it's not just "selling online." It's <span class="highlight">managing relationships and trust in a digital ecosystem.</span>
+
+          <div class="section">Why is Digital Marketing important?</div>
+          <ul>
+            <li>Everyone uses mobile phones, so businesses can easily reach people through digital platforms.</li>
+            <li>Compared to TV ads, digital marketing is much cheaper and more affordable for small businesses.</li>
+            <li>All people search, scroll, compare products and make buying online so, having an online presence is very important.</li>
+            <li>Can reach global audience and easy to measure results.</li>
+            <li>Enables faster communication with customers.</li>
+          </ul>
+          <div class="key-point">📱 Example: a small Instagram business can sell islandwide without a physical shop.</div>
+
+          <div class="section">The Digital Marketing Funnel (AIDA Model)</div>
+          <div class="diagram-box">
+            <strong>Awareness</strong> → <strong>Interest</strong> → <strong>Desire</strong> → <strong>Action</strong>
+          </div>
+
+          <div class="section">Pillars of Digital Marketing</div>
+          <ul>
+            <li><strong>Social Media Marketing:</strong> Facebook, Instagram, TikTok, YouTube</li>
+            <li><strong>Content Marketing:</strong> images, videos, reels, blogs, stories</li>
+            <li><strong>Paid Advertising:</strong> awareness, engagement, traffic, lead generation, sales, app download ads</li>
+          </ul>
+
+          <div class="section">Assignment</div>
+          We learned basic digital marketing strategy. To practice all basic strategies, the lecturer gave us an assignment. It helps us understand how digital marketing decisions are made and can apply concepts logically.
+
+          <div class="reflection">
+            <strong>Reflection:</strong> I used to think digital marketing was just "posting pretty pictures online." Now I see it as a science and an art. The lecturer said: <span class="highlight">"Digital marketing is a 2nd option if you can't find a software job."</span> At first, that felt like a consolation prize. But then I realized having a second option isn't weakness. It's wisdom. It's a safety net.
+          </div>
+        `,
+        },
+        {
+          title: "👑 Branding Yourself",
+          meta: "Mr. Heshan Rodrigo · 06.02.2026",
+          content: `
+          <div class="section">Power Up Your Personal BRAND</div><br>
+          <div class="key-point">BRAND ME IN ONE WORD --> QUEEN</div><br>
+
+          <div class="section">How do you want others to perceive you?</div>
+          I want others to perceive me as a <span class="highlight">confident, responsible and trustworthy</span> young woman who always gives her best in everything she does. I hope people see me as someone who is hardworking and determined to achieve her goals while also supporting others. I want to be known for my positive attitude, strong values to learn and grow. At the same time, I want to be recognised as someone who stays true to herself, respects others.
+
+          <div class="section">Social Media Check</div>
+          <div class="key-point">📱 Your Social Media is a personal brand</div><br>
+
+          <div class="section">Activity: </div>
+          <ul>
+            <li><strong>Who am I when no one is watching?</strong> I am a funny and simple person who enjoys learning, thinking about my future and working on becoming better than yesterday.</li>
+            <li><strong>What kind of person do I admire and why?</strong> I admire people who are hardworking, kind and disciplined. A person who keeps going even when things are difficult inspires me. I respect those who treat others with respect and humility.</li>
+            <li><strong>Who am I becoming and is that someone I'm proud to meet every day?</strong> I am becoming more confident and responsible. Yes, I am proud because I am growing step by step.</li>
+            <li><strong>If fear isn't real, what version of me would I finally set free?</strong> I would be more bold, speak my ideas freely and take bigger risks to achieve my goals.</li>
+            <li><strong>What is the story I want to be remembered for and am I living it yet?</strong> I want to be remembered as someone who turned challenges into success. I am still building that story step by step.</li>
+          </ul><br>
+
+          <div class="section">Build Meaningful NETWORKS</div>
+          <div class="key-point">Network is a group of people you connect with who can support, guide, inspire you grow in your personal or professional life.</div>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> Before you can build a brand or network, you need to get clear on who you really are and who you want to be. <span class="highlight">"Your brand is not a mask. It's your truest self, polished with intention."</span>
+          </div>
+        `,
+        },
+        {
+          title: "💡 Entrepreneurship",
+          meta: "Mr. Arshad · 12.02.2026",
+          content: `
+          <div class="section">What is Entrepreneurship?</div>
+          Entrepreneurship is the process of <span class="highlight">Starting a business, solving problems with new ideas and taking risks to create value and earn profit.</span>
+
+          <div class="section">Characteristics of a Successful Entrepreneur</div>
+          <ul>
+            <li>Self confidence</li>
+            <li>Leadership skills</li>
+            <li>Risk taking ability</li>
+            <li>Creativity</li>
+            <li>Good decision making skills</li>
+          </ul>
+
+          <div class="section">Identifying Business Opportunities</div>
+          One important topic I learned was how to identify business opportunities. A good business idea should solve a problem or satisfy customer needs. I also learned how to analyse the market and understand customer demand before starting a business.
+
+          <div class="section">Books You Need to Read</div>
+          <div class="diagram-box">📚 The Monk who Sold His Ferrari by Robin Sharma</div>
+          <div class="diagram-box">📚 Creativity, INC by ED Catmull</div>
+          <div class="diagram-box">📚 The Ride of A Lifetime by Robert Iger</div>
+          <div class="diagram-box">📚 The Building A Hard Business When Things There Are No About Easy Answers Hard Things by Ben Horowitz</div>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> I never imagined myself as a business owner. That felt like "other people's lives." But this lecture planted a small seed. What if I could turn a small idea something I already love or notice into something valuable? The lecturer didn't pressure us to start a company tomorrow. Instead, he said: <span class="highlight">Think like an entrepreneur even if you work for someone else.</span> That I can do. I learned that failure is not the opposite of success it's part of it. <span class="highlight">"Without commitment you will never start, but more importantly, without consistency, you will never finish."</span>
+          </div>
+        `,
+        },
+        {
+          title: "⚕️ Occupational Hazards in Future Career",
+          meta: "Dr. Y.C Guruge (MBBS) · 19.02.2026",
+          content: `
+          <div class="section">Occupational Hazards</div>
+          In this lesson, I learned about different types of workplace dangers and how they can affect employees in various careers. This lesson helps me to understand the importance of safety, health.
+
+          <div class="section">Factors affecting students/work life</div>
+          <div class="diagram-box">
+            1. Unhealthy food habits &nbsp; 2. Lack of sleep &nbsp; 3. Alcohol addiction &nbsp; 4. Smoking &nbsp; 5. Narcotics<br>
+            6. Relationship issues &nbsp; 7. Porn addiction &nbsp; 8. Reckless driving &nbsp; 9. Stress &nbsp; 10. Exercise
+          </div>
+
+          <div class="section">Stress</div>
+          <div class="key-point">⚠️ Causes: Academic pressure, Time pressure, Financial concerns, Uncertainty about the future</div>
+
+          <div class="section">Unhealthy Food Habits</div>
+          <div class="key-point">🍔 Eating too much fast food such as burgers, fries, junk food. Poor food habits can lead to health problems. <span class="highlight">So, eat healthy.</span></div>
+
+          <div class="section">Relationship Issues</div>
+          <div class="key-point">💔 Is it good to be single or in a relationship? It depends on the person and situations. Both have benefits.</div>
+
+          <div class="section">Exercise</div>
+          <div class="key-point">🏋️ Physical activity that keeps our body fit and healthy. Improves both physical and mental health.</div>
+
+          <div class="section">Sleep</div>
+          <div class="key-point">😴 <span class="highlight">6-8 hours of quality sleep is very important!</span> Lack of sleep may cause: Increased stress, Reduced concentration, Reduced immunity.</div>
+
+          <div class="section">Alcohol, Smoking, Narcotics</div>
+          <ul>
+            <li><strong>Alcohol:</strong> May cause addiction, harmful in large amounts, no significant benefits.</li>
+            <li><strong>Smoking:</strong> Addictive and harmful. No benefits. May reduce stamina, energy, growth.</li>
+            <li><strong>Narcotics:</strong> Extremely addictive and harmful! May destroy overall health and wellbeing.</li>
+          </ul>
+
+          <div class="section">Reckless Driving</div>
+          <div class="key-point">🚗 In Sri Lanka around <span class="highlight">5 people die everyday</span> due to road traffic accidents! Out of it, around 4 will be motorbike crashes!</div>
+
+          <div class="section">When stress become too much</div>
+          <div class="key-point">⚠️ Warning signs: Constant panic, Insomnia, Loss of appetite, Feeling hopeless. Talk to: A trusted friend, A lecturer, A counselor, Parent.</div>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> This was the hardest lecture to sit through. Not because it was difficult but because it was true. I skip meals. I sleep late. I feel stress in my shoulders but call it "just being busy." The statistic about motorbike crashes in Sri Lanka shocked me: 4 out of 5 people who die daily are on motorbikes. I ride a bike. I never thought about the numbers. Now I do. <span class="highlight">"My biggest career asset is not my degree. It's my physical and mental health."</span>
+          </div>
+        `,
+        },
+        {
+          title: "⚖️ Law of Sri Lanka",
+          meta: "Mr. Sachith Ranasinghe · 26/02/2026",
+          content: `
+          <div class="section">What is Law?</div>
+          Law is a set of rules created by the government or an authority to keep order in society. It tells people what they can and can't do. If someone breaks the law, there are punishments like fines or jail to keep everyone safe and fair.
+
+          <div class="section">Purpose of Law</div>
+          <ul>
+            <li>Regulate society</li>
+            <li>Maintain peace and order</li>
+            <li>Define rights and responsibilities</li>
+            <li>Provide mechanisms for disputes</li>
+          </ul>
+
+          <div class="section">Sources of Law in Sri Lanka</div>
+          <ul>
+            <li><strong>Constitution</strong> - The Supreme Law</li>
+            <li><strong>Statutes</strong> - Passed and enforced legislation</li>
+            <li><strong>Customs</strong> - Generally accepted behaviours</li>
+            <li><strong>Code</strong> - Corporate Governance Code</li>
+            <li><strong>Regulations</strong> - SEC Regulation</li>
+            <li><strong>Charters</strong> - Internally customized agreed on virtues</li>
+          </ul>
+
+          <div class="section">Origin of Law in Sri Lanka</div>
+          <div class="diagram-box">
+            1. Roman Dutch Law &nbsp; 2. English Law &nbsp; 3. Kandyan Law &nbsp; 4. Thesawalamai Law &nbsp; 5. Muslim Law
+          </div>
+
+          <div class="section">Types of Law</div>
+          <ul>
+            <li><strong>Civil Law:</strong> deals with disagreements between people or organizations. Ex: Divorce, Land matters.</li>
+            <li><strong>Criminal Law:</strong> deals with crimes and punishment. Ex: Rape, Robbery, Murder.</li>
+          </ul>
+
+          <div class="section">Types of Businesses</div>
+          <ul>
+            <li>Sole Proprietorships</li>
+            <li>Partnership</li>
+            <li>Companies</li>
+          </ul>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> This lecture helps me understand the role of law in maintaining order in society. I learned that laws are not just rules but essential tools that protect our rights and guide behavior. <span class="highlight">"Respecting the law is not fear. It's freedom with boundaries."</span>
+          </div>
+        `,
+        },
+        {
+          title: "💬 User Interface",
+          meta: "Mrs. Dilushi Perera · 05/03/2026",
+          content: `
+          <div class="section">The Power of Communication</div>
+          If you don't know how to communicate with yourself, your mind becomes mixed up and confusing. You might look very confident, you might carry yourself well, you might speak really well confidently. But whatever you speak is not being communicated properly if there is a problem like that, then you good to get into the lot of trouble.
+
+          <div class="section">What problems can happen in communication?</div>
+          <ul>
+            <li>Misunderstanding</li>
+            <li>Assumptions</li>
+            <li>Delay</li>
+            <li>Noise</li>
+          </ul>
+
+          <div class="section">How to improve effective communication?</div>
+          <ul>
+            <li>Say your message clearly</li>
+            <li>Choose the correct way to communicate</li>
+            <li>Reduce things that disturb communication</li>
+            <li>Ask the other person if they understood</li>
+            <li>Change how you explain depending on the person</li>
+            <li><span class="highlight">Your words, tone and body language should match</span></li>
+          </ul>
+
+          <div class="section">Tools</div>
+          <ul>
+            <li>Vocal expression</li>
+            <li>Facial expression</li>
+            <li>Body language</li>
+            <li>Gestures</li>
+            <li>Posture</li>
+          </ul>
+          <div class="key-point">🤝 The handshake protocol. It confirms the connection is established and secure. Eye contact & Connection.</div>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> This lecture broke me open a little. I always thought communication was about speaking well. But no it starts inside. If my thoughts are a tangled mess, no amount of confident words will save me. The question <span class="highlight">"Can you communicate with yourself?"</span> hit hard. Do I listen to my own feelings? Do I understand my own fears? Not always. Sometimes I just push through. I learned that effective communication = clear mind + clear message + feedback check. <span class="highlight">"Before I ask 'Did you understand me?' I must ask 'Do I understand myself?'"</span>
+          </div>
+        `,
+        },
+        {
+          title: "🎯 What is in it For Me?",
+          meta: "Mr. Adrian Dutch · 17/03/2026",
+          content: `
+          <div class="section">Career Powered Education</div>
+          This lecture explained the career powered education and it helped me understand how to sell anything and become a better person in the process.
+
+          <div class="diagram-box">
+            The future is you · The power of now · Your place to become<br>
+            Where ambition begins · Together made from more · It's all about you
+          </div>
+
+          <div class="section">Maslow's Hierarchy of Needs</div>
+          Maslow's hierarchy of needs is a motivational theory in psychology comprising a <span class="highlight">five tier model of human needs</span> often depicted as hierarchical levels within a pyramid. Needs lower down in the hierarchy must be satisfied before individuals can attend to needs higher up.
+
+          <div class="diagram-box">
+            🧠 Self-Actualization<br> 
+            Esteem · Love/Belonging · Safety · Physiological 
+          </div> 
+
+          <div class="reflection">
+            <strong>Reflection:</strong> This session felt like a warm hug and a cold splash of water at the same time. For years, I studied because I had to because exams were coming, because parents expected it. But Mr. Adrian asked: <span class="highlight">"What's in it for you?"</span> Not in a selfish way. In a self-respecting way. If I cannot answer that question, then I am just going through motions. Education should serve my life not the other way around. Maslow's pyramid explained why I sometimes feel stuck: maybe I'm tired (lack of sleep), maybe I feel lonely (lack of belonging). No wonder I can't focus on "dreams." I need to fix the bottom floors first. <span class="highlight">"You cannot paint the roof if the foundation is cracked."</span>
+          </div>
+        `,
+        },
+        {
+          title: "🍽️ Table Etiquette",
+          meta: "Mr. Rangika Mendis · 23/04/2026",
+          content: `
+          <div class="section">Why is Table Etiquette important?</div>
+          Because it demonstrates respect for others, ensures a pleasurable dining experience and reflects professionalism.
+
+          <div class="section">Get Familiar with Cutleries</div>
+          <p>There are many types of cutleries. The general rule is to use the cutlery from the outside in. The cutlery is placed in the order of use.</p>
+          <div class="diagram-box">🍴 Dessert spoon · Soup spoon · Butter Knife · Dessert Fork</div>
+          
+          <br>
+          <div class="section">Formal Seating Priority</div>
+          <ol>
+            <li>Guest of Honor</li>
+            <li>Ladies</li>
+            <li>Elders</li>
+            <li>Other Guests</li>
+            <li>Host (usually seated last)</li>
+          </ol><br>
+
+          <div class="section">Dining Setup</div>
+          <ul>
+            <li>Approach the Chair Correctly</li>
+            <li>Unfold the Napkin</li>
+            <li>Maintain Good Posture</li>
+            <li>Proper Hand Placement</li>
+            <li>Roll your shoulders backwards</li>
+            <li>Straighten your back</li>
+            <li><span class="highlight">Hands should be visible</span></li>
+          </ul><br>
+
+          <div class="section">Bread Etiquette</div>
+          <div class="key-point">🍞 Wait for the Right Moment, Take the Bread Plate, Break, Don't Bite.</div>
+
+          <br>
+          <div class="section">Soup Types</div>
+          <div class="diagram-box">Bisque · Consomme · Chowder · Broth/Stock · Gazpacho</div>
+          
+          <br>
+          <div class="section">Finished Eating</div>
+          <div class="key-point">Place your knife and fork parallel at the <span class="highlight">4:20 or 6:30 position</span>. Napkins loosely to the left of the plate.</div>
+          
+          <br>
+          <div class="section">Do's and Don'ts</div>
+          <ul>
+            <li><strong>Do's:</strong> Arrive on time, Silence your phone, Place your napkin on your lap, Keep your elbows off the table, Use utensils from the outside in, Say "please" and "thank you"</li>
+            <li><strong>Don'ts:</strong> Cleaning your teeth, Blowing a wind, Grooming yourself, Applying make up.</li>
+          </ul>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> I grew up eating casually sometimes with my phone next to my plate, sometimes with my elbow on the table. Nobody taught me that cutlery can speak. This lecture felt like entering a secret society. There are rules, yes but they are not meant to make me feel small. They are meant to make others feel respected. <span class="highlight">"Manners are not about being fancy. They are about being thoughtful even when no one is watching."</span>
+          </div>
+        `,
+        },
+        {
+          title: "💼 Professional Presence",
+          meta: "Ms. Maneesha Gunawardena · 07.05.2026",
+          content: `
+          <div class="section">Professional Presence</div>
+          When I heard "Professional Presence", I assumed it would be basic tuck in your shirt, smile more. Something I could coast through. But I was wrong.
+
+          <div class="diagram-box">
+            <span class="highlight">55%</span> HOW YOU LOOK · <span class="highlight">38%</span> HOW YOU SOUND · <span class="highlight">7%</span> WHAT YOU SAY
+          </div>
+          <div class="key-point">⚠️ Only 7% is the actual words. The impression is already formed before you open your mouth.</div>
+          <br>
+          <div class="section">Dressing Rules</div>
+          <ul>
+            <li>Trousers should sit at the ankle not shorter, not dragging.</li>
+            <li>Tops should never show the midriff.</li>
+            <li><span class="highlight">Belt must match your shoes.</span></li>
+            <li>Bags should be neutral and formal.</li>
+            <li>Jewellery should be minimal.</li>
+            <li>If shoes have laces, there must be socks.</li>
+          </ul>
+
+          <div class="section">Hair</div>
+          <div class="key-point">💇 Keep it neat. Keep it simple. Hair ties and clips should match your hair colour not your outfit.</div>
+        <br>
+          <div class="section">Hands & Nails</div>
+          <div class="key-point">✋ Clean. Nails at an even length. Nothing dramatic. Just maintained.</div>
+        <br>
+          <div class="section">Body Language</div>
+          <ul>
+            <li><strong>Facial Expressions:</strong> Be aware of what your face is saying.</li>
+            <li><strong>Posture:</strong> Sitting straight and leaning forward shows interest.</li>
+            <li><strong>Handshake:</strong> Firm, confident and short.</li>
+          </ul>
+
+          <div class="reflection">
+            <strong>Reflection:</strong> Before this, I genuinely believed professional Presence was a "business and management" thing. As an IT student, I thought my technical skills were what would carry me. How I looked and carried myself felt secondary. The 55% stat changed that thinking directly. <span class="highlight">"More than half of how someone perceives you have nothing to do with what you actually say."</span> Professional Presence is about being confident and showing your true self with purpose.
+          </div><br>
+        `,
+        },
+      ];
+
+      // ---- BUILD DISTRICTS (clickable) ----
+      const clickables = [];
+      const colors = [
+        0x1a7a9a, 0x2a9aba, 0x3abada, 0x4acada, 0x5adada, 0x6aeafa, 0x7afafa,
+        0x8afaff, 0x9afaff, 0xaafaff,
+      ];
+
+      // Responsive district size
+      const isMobile = window.innerWidth < 768;
+      const radius = isMobile ? 12 : 15;
+      const coreScale = isMobile ? 0.7 : 0.9;
+
+      for (let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
+        const x = Math.sin(angle) * radius;
+        const z = Math.cos(angle) * radius;
+
+        const group = new THREE.Group();
+        group.position.set(x, 0.5 + Math.sin(i * 1.5) * 0.6, z);
+
+        const plat = new THREE.Mesh(
+          new THREE.CylinderGeometry(
+            isMobile ? 1.2 : 1.6,
+            isMobile ? 1.5 : 2.0,
+            0.4,
+            16,
+          ),
+          new THREE.MeshPhysicalMaterial({
+            color: 0x1a4a6a,
+            roughness: 0.4,
+            metalness: 0.2,
+            emissive: 0x0a2a3a,
+            emissiveIntensity: 0.2,
+          }),
+        );
+        plat.position.y = -0.2;
+        plat.receiveShadow = true;
+        group.add(plat);
+
+        const core = new THREE.Mesh(
+          new THREE.OctahedronGeometry(coreScale, 1),
+          new THREE.MeshPhysicalMaterial({
+            color: colors[i % colors.length],
+            emissive: colors[i % colors.length],
+            emissiveIntensity: 0.25,
+            transparent: true,
+            opacity: 0.8,
+            roughness: 0.2,
+            metalness: 0.1,
+          }),
+        );
+        core.position.y = 0.7;
+        core.castShadow = true;
+        core.userData = { index: i };
+        group.add(core);
+        clickables.push(core);
+
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(isMobile ? 0.9 : 1.2, 0.04, 8, 20),
+          new THREE.MeshPhysicalMaterial({
+            color: 0x88ddff,
+            emissive: 0x226688,
+            emissiveIntensity: 0.3,
+          }),
+        );
+        ring.position.y = 1.1;
+        ring.rotation.x = Math.PI / 3;
+        group.add(ring);
+
+        // Label - responsive font size
+        const labelSize = isMobile ? "9px" : "11px";
+        const div = document.createElement("div");
+        const shortName = lessonData[i].title.split("·")[0].trim();
+        div.textContent = isMobile
+          ? shortName.replace(/[^\w\s]/g, "").trim()
+          : shortName;
+        div.style.color = "#d4f4ff";
+        div.style.fontSize = labelSize;
+        div.style.fontWeight = "300";
+        div.style.background = "rgba(2,17,30,0.6)";
+        div.style.backdropFilter = "blur(4px)";
+        div.style.padding = isMobile ? "2px 8px" : "3px 14px";
+        div.style.borderRadius = "30px";
+        div.style.border = "1px solid #3ad8ff55";
+        div.style.letterSpacing = "1px";
+        div.style.whiteSpace = "nowrap";
+        div.style.pointerEvents = "none";
+        div.style.fontSize = isMobile ? "8px" : "11px";
+        const label = new CSS2DObject(div);
+        label.position.set(0, isMobile ? 1.6 : 2.0, 0);
+        group.add(label);
+
+        scene.add(group);
+      }
+
+      // ---- RAYCASTER CLICK ----
+      const panel = document.getElementById("lesson-panel");
+      const panelTitle = document.getElementById("panel-title");
+      const panelMeta = document.getElementById("panel-meta");
+      const panelContent = document.getElementById("panel-content");
+      const closeBtn = document.getElementById("close-panel");
+
+      function showLesson(index) {
+        const data = lessonData[index];
+        if (!data) return;
+        panelTitle.textContent = data.title;
+        panelMeta.textContent = data.meta;
+        panelContent.innerHTML = data.content;
+        panel.style.display = "block";
+        controls.autoRotate = false;
+        // Scroll to top
+        panel.scrollTop = 0;
+      }
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      // Handle both click and touch
+      function handleInteraction(event) {
+        let clientX, clientY;
+        if (event.touches) {
+          clientX = event.touches[0].clientX;
+          clientY = event.touches[0].clientY;
+          event.preventDefault();
+        } else {
+          clientX = event.clientX;
+          clientY = event.clientY;
+        }
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(clickables);
+        if (intersects.length > 0) {
+          const idx = intersects[0].object.userData.index;
+          if (idx !== undefined) showLesson(idx);
+        }
+      }
+
+      renderer.domElement.addEventListener("click", handleInteraction);
+      renderer.domElement.addEventListener("touchstart", handleInteraction, {
+        passive: false,
+      });
+
+      closeBtn.addEventListener("click", () => {
+        panel.style.display = "none";
+        controls.autoRotate = true;
+      });
+      closeBtn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        panel.style.display = "none";
+        controls.autoRotate = true;
+      });
+
+      // ---- RESIZE HANDLER ----
+      function onResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+        labelRenderer.setSize(width, height);
+
+        // Update camera distance based on screen size
+        const dist = width < 480 ? 38 : width < 768 ? 32 : 28;
+        camera.position.set(22, 14, dist);
+        controls.update();
+      }
+
+      window.addEventListener("resize", onResize);
+
+      // ---- ANIMATION ----
+      let clock = new THREE.Clock();
+      function animate() {
+        const t = clock.getElapsedTime();
+        bubbleGroup.children.forEach((b, idx) => {
+          b.position.y += Math.sin(t * 0.4 + idx) * 0.0015;
+          b.position.x += Math.sin(t * 0.3 + idx * 0.7) * 0.0008;
+          b.position.z += Math.cos(t * 0.4 + idx * 0.5) * 0.0008;
+        });
+        clickables.forEach((c) => {
+          c.rotation.x += 0.008;
+          c.rotation.z += 0.006;
+        });
+        controls.update();
+        renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+      animate();
+    </script>
+  </body>
+</html>
