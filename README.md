@@ -5,7 +5,9 @@
 
 "Not Lost Anymore" is an immersive, AAA-quality 3D web portfolio that transforms my software engineering learning journey into an interactive underwater Atlantis city. Each lesson from my ESD (Employment Skills Development) program became a distinct district, creating a visual narrative of growth from confusion to clarity.
 
-**Live Demo:** [portfolio-esd.netlify.app](portfolio-esd.netlify.app)
+## 🚀 Live Demo
+
+[portfolio-esd.netlify.app](https://portfolio-esd.netlify.app/)
 
 ---
 
